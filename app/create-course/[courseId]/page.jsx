@@ -364,9 +364,22 @@ function CourseLayout({ params }) {
         // Reset the used videos tracking set at the beginning of each generation
         usedVideos.clear();
 
+        // Track which chapters have been successfully processed
+        const successfulChapters = new Set();
+        // Track chapters that are still pending after retries
+        const failedChapters = [];
+
+        // Define maximum retry attempts per chapter
+        const MAX_RETRIES = 3;
+        // Delay between retries (in milliseconds)
+        const RETRY_DELAY = 2000;
+
         try {
+            // First pass: try to process all chapters
             for (const [index, chapter] of chapters.entries()) {
                 if (index >= 15) break; // Limit to 15 chapters
+
+                if (successfulChapters.has(index)) continue; // Skip already processed chapters
 
                 console.log(
                     `Processing chapter ${index + 1}/${Math.min(
@@ -375,92 +388,163 @@ function CourseLayout({ params }) {
                     )}: ${chapter.chapterName}`
                 );
 
-                // First, get AI-generated content for this chapter
-                const PROMPT =
-                    "Explain the concept in Detail on Topic: " +
-                    course?.name +
-                    ", Chapter: " +
-                    chapter?.chapterName +
-                    ", in JSON Format with a list of arrays with fields as title, explanation on given chapter in detail, Code Example (Code field in <precode> format) if applicable in Uzbek. Ensure all special characters (e.g., newlines, backslashes, quotes) in code examples are properly escaped for valid JSON.";
+                // Try to process this chapter with retries
+                let retryCount = 0;
+                let success = false;
 
-                try {
-                    // Get AI-generated content first so we can use it for better video search
-                    const result = await GenerateChapterContent_AI.sendMessage(
-                        PROMPT
-                    );
-                    const rawText = result.response?.text();
-
-                    if (!rawText) {
-                        throw new Error("Empty or undefined response from AI");
+                while (retryCount < MAX_RETRIES && !success) {
+                    if (retryCount > 0) {
+                        console.log(
+                            `Retry #${retryCount} for chapter ${chapter.chapterName}`
+                        );
+                        // Add delay between retries
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, RETRY_DELAY)
+                        );
                     }
 
-                    // Parse the JSON content
-                    let contentObject;
                     try {
-                        // Try direct parsing first
-                        contentObject = JSON.parse(rawText);
-                    } catch (jsonError) {
-                        // If direct parsing fails, try to extract JSON
-                        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-                        if (jsonMatch) {
-                            try {
-                                contentObject = JSON.parse(jsonMatch[0]);
-                            } catch (extractError) {
-                                console.log(
-                                    "Could not parse JSON even after extraction:",
-                                    extractError
+                        // First, get AI-generated content for this chapter
+                        const PROMPT =
+                            "Explain the concept in Detail on Topic: " +
+                            course?.name +
+                            ", Chapter: " +
+                            chapter?.chapterName +
+                            ", in JSON Format with a list of arrays with fields as title, explanation on given chapter in detail, Code Example (Code field in <precode> format) if applicable in Uzbek. Ensure all special characters (e.g., newlines, backslashes, quotes) in code examples are properly escaped for valid JSON.";
+
+                        // Get AI-generated content first so we can use it for better video search
+                        const result =
+                            await GenerateChapterContent_AI.sendMessage(PROMPT);
+                        const rawText = result.response?.text();
+
+                        if (!rawText) {
+                            throw new Error(
+                                "Empty or undefined response from AI"
+                            );
+                        }
+
+                        // Parse the JSON content
+                        let contentObject;
+                        try {
+                            // Try direct parsing first
+                            contentObject = JSON.parse(rawText);
+                        } catch (jsonError) {
+                            // If direct parsing fails, try to extract JSON
+                            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+                            if (jsonMatch) {
+                                try {
+                                    contentObject = JSON.parse(jsonMatch[0]);
+                                } catch (extractError) {
+                                    console.log(
+                                        "Could not parse JSON even after extraction:",
+                                        extractError
+                                    );
+                                    throw extractError;
+                                }
+                            } else {
+                                console.log("No JSON object found in response");
+                                throw new Error(
+                                    "Invalid response format from AI"
                                 );
-                                throw extractError;
                             }
-                        } else {
-                            console.log("No JSON object found in response");
-                            throw new Error("Invalid response format from AI");
+                        }
+
+                        // Extract section titles from content
+                        let additionalKeywords = "";
+                        if (contentObject && contentObject.sections) {
+                            additionalKeywords = contentObject.sections
+                                .slice(0, 3)
+                                .map((section) => section.title)
+                                .join(" ");
+                        }
+
+                        // Get video ID using the enhanced search with content-based keywords
+                        const videoId = await findVideoForChapter(
+                            course.name,
+                            chapter.chapterName,
+                            additionalKeywords
+                        );
+
+                        // Save chapter content to database
+                        await db.insert(Chapters).values({
+                            chapterId: index,
+                            courseId: course?.courseId,
+                            content: contentObject,
+                            videoId,
+                        });
+
+                        console.log(
+                            `Successfully processed chapter ${chapter.chapterName}`
+                        );
+
+                        // Mark this chapter as successfully processed
+                        successfulChapters.add(index);
+                        success = true;
+                    } catch (err) {
+                        console.log(
+                            `Error processing chapter ${
+                                chapter.chapterName
+                            } (Attempt ${retryCount + 1}/${MAX_RETRIES}):`,
+                            err
+                        );
+                        retryCount++;
+
+                        // If we've reached max retries, add to failed chapters list
+                        if (retryCount >= MAX_RETRIES) {
+                            failedChapters.push({
+                                index,
+                                chapterName: chapter.chapterName,
+                                error: err.message,
+                            });
                         }
                     }
-
-                    // Extract section titles from content
-                    let additionalKeywords = "";
-                    if (contentObject && contentObject.sections) {
-                        additionalKeywords = contentObject.sections
-                            .slice(0, 3)
-                            .map((section) => section.title)
-                            .join(" ");
-                    }
-
-                    // Get video ID using the enhanced search with content-based keywords
-                    const videoId = await findVideoForChapter(
-                        course.name,
-                        chapter.chapterName,
-                        additionalKeywords
-                    );
-
-                    // Save chapter content to database
-                    await db.insert(Chapters).values({
-                        chapterId: index,
-                        courseId: course?.courseId,
-                        content: contentObject,
-                        videoId,
-                    });
-
-                    console.log(
-                        `Successfully processed chapter ${chapter.chapterName}`
-                    );
-                } catch (err) {
-                    console.log(
-                        `Error processing chapter ${chapter.chapterName}:`,
-                        err
-                    );
-                    // Continue with next chapter instead of stopping entirely
                 }
             }
 
-            // Mark course as published
-            await db
-                .update(CourseList)
-                .set({ publish: true })
-                .where(eq(CourseList.courseId, course?.courseId));
+            // Check if we have any failed chapters after initial processing
+            if (failedChapters.length > 0) {
+                console.log(
+                    `${failedChapters.length} chapters failed after ${MAX_RETRIES} attempts.`
+                );
+                console.log(
+                    `Failed chapters: ${failedChapters
+                        .map((ch) => ch.chapterName)
+                        .join(", ")}`
+                );
 
-            router.replace("/create-course/" + course?.courseId + "/finish");
+                // Optionally, you can implement a more aggressive retry for persistently failing chapters
+                // This could include using a different prompt format or other strategies
+            }
+
+            // Check if we've processed all required chapters
+            const totalProcessed = successfulChapters.size;
+            const totalToProcess = Math.min(chapters.length, 15);
+
+            if (totalProcessed === totalToProcess) {
+                console.log(
+                    `All ${totalProcessed} chapters successfully processed!`
+                );
+
+                // Mark course as published only when all chapters are successfully processed
+                await db
+                    .update(CourseList)
+                    .set({ publish: true })
+                    .where(eq(CourseList.courseId, course?.courseId));
+
+                router.replace(
+                    "/create-course/" + course?.courseId + "/finish"
+                );
+            } else {
+                console.log(
+                    `Processed ${totalProcessed}/${totalToProcess} chapters.`
+                );
+                // You might want to ask the user if they want to publish anyway or try again later
+
+                // Show an alert or message to the user
+                alert(
+                    `${totalProcessed} out of ${totalToProcess} chapters were successfully processed. ${failedChapters.length} chapters failed after multiple attempts.`
+                );
+            }
         } catch (err) {
             console.log("Unexpected error in GenerateChapterContent:", err);
         } finally {

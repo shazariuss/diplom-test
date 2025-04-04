@@ -25,7 +25,7 @@ const ChapterContent = ({ chapter, content }) => {
 
             <div>
                 {content?.content?.sections?.map((item, index) => (
-                    <div className="p-5 bg-sky-50 mb-3 rounded-lg">
+                    <div className="p-5 bg-sky-50 mb-3 rounded-lg max-w-[1150px]">
                         <h2 className="font-medium text-lg">{item?.title}</h2>
                         <Markdown>{item?.explanation}</Markdown>
                         {/* <p className="whitespace-pre-wrap">
