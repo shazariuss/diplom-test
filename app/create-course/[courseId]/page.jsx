@@ -334,7 +334,7 @@ function CourseLayout({ params }) {
                     }
 
                     try {
-                        const PROMPT = `Explain the concept in Detail on Topic: ${course?.name}, Chapter: ${chapter?.chapterName}, in JSON Format with a list of arrays with fields as title, explanation on given chapter in detail, Code Example (Code field in <precode> format) if applicable in Uzbek. Ensure all special characters (e.g., newlines, backslashes, quotes) in code examples are properly escaped for valid JSON.`;
+                        const PROMPT = `Explain the concept in Detail on Topic: ${course?.name}, Chapter: ${chapter?.chapterName}, in JSON Format with a list of arrays with fields as title, explanation on given chapter in detail, Code Example if applicable in Uzbek. Ensure all special characters (e.g., newlines, backslashes, quotes) in code examples are properly escaped for valid JSON.`;
                         const result =
                             await GenerateChapterContent_AI.sendMessage(PROMPT);
                         const rawText = result.response?.text();
