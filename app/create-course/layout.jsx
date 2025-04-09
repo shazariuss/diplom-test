@@ -10,7 +10,6 @@ function CreateCourseLayout({ children }) {
             <UserInputContext.Provider
                 value={{ userCourseInput, setUserCourseInput }}
             >
-                <Header />
                 {children}
             </UserInputContext.Provider>
         </div>

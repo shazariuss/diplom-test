@@ -3,15 +3,16 @@ import { db } from "@/configs/db";
 import { Chapters, CourseList } from "@/configs/schema";
 import { useUser } from "@clerk/nextjs";
 import { and, eq } from "drizzle-orm";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import CourseBasicInfo from "./_components/CourseBasicInfo";
 import CourseDetail from "./_components/CourseDetail";
 import ChapterList from "./_components/ChapterList";
 import LoadingDialog from "../_components/LoadingDialog";
-import { Button } from "@/components/ui/button";
-import { GenerateChapterContent_AI } from "@/configs/AiModel";
+import { motion, useAnimation, useInView } from "framer-motion";
+import { Sparkles } from "lucide-react";
 import service from "@/configs/service";
 import { useRouter } from "next/navigation";
+import { GenerateChapterContent_AI } from "@/configs/AiModel";
 
 function CourseLayout({ params }) {
     const { user } = useUser();
@@ -19,8 +20,16 @@ function CourseLayout({ params }) {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
+    const ref = useRef(null);
+    const isInView = useInView(ref, { once: true });
+    const controls = useAnimation();
+
     useEffect(() => {
-        params && getCourse();
+        if (isInView) controls.start("visible");
+    }, [isInView, controls]);
+
+    useEffect(() => {
+        params && user && getCourse();
     }, [params, user]);
 
     const getCourse = async () => {
@@ -36,46 +45,35 @@ function CourseLayout({ params }) {
                     )
                 )
             );
-
         setCourse(result[0]);
     };
 
-    // Helper function to translate text using our API route
     const translateText = async (text) => {
         if (!text || text.trim() === "") return "";
-
         try {
             const response = await fetch("/api/translate", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ text }),
             });
-
-            if (!response.ok) {
+            if (!response.ok)
                 throw new Error(
                     `Translation failed with status: ${response.status}`
                 );
-            }
-
             const data = await response.json();
-            return data.translatedText || text; // Fall back to original text if translation fails
+            console.log(`Translation: "${text}" -> "${data.translatedText}"`);
+            return data.translatedText || text;
         } catch (error) {
             console.warn("Translation error:", error);
-            return text; // Return original text if translation fails
+            return text;
         }
     };
 
-    // Helper function to extract relevant keywords from chapter content
     const extractKeywords = async (chapterName, courseName) => {
-        // Remove common prefixes like "Chapter 1: " or "1-bob: "
         const cleanChapterName = chapterName.replace(
             /^(\d+[\s\-\.:]*)?(chapter|bob|section|part|qism)?[\s\-\.:]+/i,
             ""
         );
-
-        // Translate the chapter name and course name
         const translatedChapterName = await translateText(cleanChapterName);
         const translatedCourseName = await translateText(courseName);
 
@@ -83,7 +81,6 @@ function CourseLayout({ params }) {
             `Translation: "${cleanChapterName}" -> "${translatedChapterName}"`
         );
 
-        // Split into words, remove small words (less than 3 chars) and duplicates
         const chapterWords = [
             ...new Set(
                 translatedChapterName
@@ -92,8 +89,6 @@ function CourseLayout({ params }) {
                     .map((word) => word.toLowerCase())
             ),
         ];
-
-        // Get course name words, also removing duplicates and small words
         const courseWords = [
             ...new Set(
                 translatedCourseName
@@ -102,11 +97,17 @@ function CourseLayout({ params }) {
                     .map((word) => word.toLowerCase())
             ),
         ];
-
-        // Create unique keywords by prioritizing chapter-specific terms
         const uniqueChapterWords = chapterWords.filter(
             (word) => !courseWords.includes(word)
         );
+
+        console.log(`Keywords extracted for "${chapterName}":`, {
+            primaryKeywords: uniqueChapterWords,
+            courseKeywords: courseWords,
+            allKeywords: [...uniqueChapterWords, ...courseWords],
+            translatedChapterName,
+            translatedCourseName,
+        });
 
         return {
             primaryKeywords: uniqueChapterWords,
@@ -117,10 +118,8 @@ function CourseLayout({ params }) {
         };
     };
 
-    // Track which videos have already been used to avoid duplicates
     const usedVideos = new Set();
 
-    // Helper function to search for videos with multiple strategies
     const findVideoForChapter = async (
         courseName,
         chapterName,
@@ -128,9 +127,6 @@ function CourseLayout({ params }) {
     ) => {
         try {
             const keywords = await extractKeywords(chapterName, courseName);
-            console.log(`Keywords extracted for "${chapterName}":`, keywords);
-
-            // Translate any additional content if provided
             let translatedAdditionalKeywords = "";
             if (additionalContent) {
                 translatedAdditionalKeywords = await translateText(
@@ -141,21 +137,15 @@ function CourseLayout({ params }) {
                 );
             }
 
-            // Build search queries in order of relevance
             const searchQueries = [
-                // 1. Translated chapter name with educational terms
                 `${keywords.translatedChapterName} tutorial`,
                 `${keywords.translatedChapterName} lesson`,
                 `how to ${keywords.translatedChapterName}`,
-
-                // 2. If we have additional content, try with it
                 ...(translatedAdditionalKeywords
                     ? [
                           `${keywords.translatedChapterName} ${translatedAdditionalKeywords} tutorial`,
                       ]
                     : []),
-
-                // 3. Chapter-specific keywords with educational terms
                 ...(keywords.primaryKeywords.length > 0
                     ? [
                           `${keywords.primaryKeywords.join(" ")} tutorial`,
@@ -163,8 +153,6 @@ function CourseLayout({ params }) {
                           `${keywords.primaryKeywords.join(" ")} explanation`,
                       ]
                     : []),
-
-                // 4. Chapter keywords with course context
                 ...(keywords.primaryKeywords.length > 0
                     ? [
                           `${
@@ -172,16 +160,11 @@ function CourseLayout({ params }) {
                           } ${keywords.primaryKeywords.join(" ")}`,
                       ]
                     : []),
-
-                // 5. Exact translated chapter name with course context as fallback
                 `${keywords.translatedCourseName} ${keywords.translatedChapterName}`,
-
-                // 6. Course as last resort
                 `${keywords.translatedCourseName} tutorial`,
                 `learn ${keywords.translatedCourseName}`,
             ];
 
-            // Determine topic from course name to filter results
             const topicCategories = {
                 programming: [
                     "javascript",
@@ -196,7 +179,6 @@ function CourseLayout({ params }) {
                 math: ["math", "calculus", "algebra", "geometry", "statistics"],
                 science: ["physics", "chemistry", "biology", "science"],
                 language: ["english", "language", "grammar", "vocabulary"],
-                // Add more categories as needed
             };
 
             let courseTopic = "";
@@ -219,98 +201,61 @@ function CourseLayout({ params }) {
                 }
             }
 
-            // Container for all videos found across all queries
             const allFoundVideos = [];
-
-            // Try each search query until we find a relevant video
             for (const query of searchQueries) {
                 console.log(`Searching for video with query: "${query}"`);
-
                 try {
                     const resp = await service.getVideos(query);
-
-                    if (resp && resp.length > 0) {
-                        // Add all videos from this query to our collection
-                        allFoundVideos.push(...resp);
-                    }
+                    if (resp && resp.length > 0) allFoundVideos.push(...resp);
                 } catch (searchError) {
                     console.warn(
                         `Search error for query "${query}":`,
                         searchError
                     );
-                    // Continue with next query
                 }
-
-                // Small delay between requests to avoid rate limiting
                 await new Promise((resolve) => setTimeout(resolve, 500));
             }
 
-            // Filter function to identify more relevant videos
             const scoreVideo = (video) => {
                 if (!video.snippet) return 0;
-
                 let score = 0;
                 const title = video.snippet.title.toLowerCase();
                 const description =
                     video.snippet.description?.toLowerCase() || "";
-
-                // Check for educational indicators
                 if (
-                    title.includes("tutorial") ||
-                    title.includes("lesson") ||
-                    title.includes("guide") ||
-                    title.includes("how to") ||
-                    title.includes("learn") ||
-                    title.includes("course")
-                ) {
+                    [
+                        "tutorial",
+                        "lesson",
+                        "guide",
+                        "how to",
+                        "learn",
+                        "course",
+                    ].some((term) => title.includes(term))
+                )
                     score += 10;
-                }
-
-                // Check for topic match
                 if (
                     courseTopic &&
                     (title.includes(courseTopic) ||
                         description.includes(courseTopic))
-                ) {
+                )
                     score += 5;
-                }
-
-                // Check for chapter keyword matches
                 keywords.primaryKeywords.forEach((keyword) => {
                     if (title.includes(keyword)) score += 3;
                     if (description.includes(keyword)) score += 1;
                 });
-
-                // Check for course name match
-                if (
-                    title.includes(keywords.translatedCourseName.toLowerCase())
-                ) {
+                if (title.includes(keywords.translatedCourseName.toLowerCase()))
                     score += 5;
-                }
-
-                // Prefer English content
-                if (title.match(/[a-zA-Z]{5,}/)) {
-                    score += 8; // Likely English if it has several English words
-                }
-
-                // Heavily penalize videos we've already used
-                if (usedVideos.has(video.id.videoId)) {
-                    score -= 50;
-                }
-
+                if (title.match(/[a-zA-Z]{5,}/)) score += 8;
+                if (usedVideos.has(video.id.videoId)) score -= 50;
                 return score;
             };
 
-            // Now score and sort ALL collected videos
             if (allFoundVideos.length > 0) {
-                // Remove duplicates by videoId
                 const uniqueVideos = Array.from(
                     new Map(
                         allFoundVideos.map((v) => [v.id.videoId, v])
                     ).values()
                 );
-
-                // Score and sort videos by relevance
                 const scoredVideos = uniqueVideos
                     .map((video) => ({
                         video,
@@ -331,10 +276,7 @@ function CourseLayout({ params }) {
                     console.log(
                         `Selected video: "${bestMatch.snippet.title}" (Score: ${scoredVideos[0].score})`
                     );
-
-                    // Add the selected video to our "used" set to avoid duplicates
                     usedVideos.add(bestMatch.id.videoId);
-
                     return bestMatch.id.videoId;
                 }
             }
@@ -360,26 +302,16 @@ function CourseLayout({ params }) {
         }
 
         setIsLoading(true);
-
-        // Reset the used videos tracking set at the beginning of each generation
         usedVideos.clear();
-
-        // Track which chapters have been successfully processed
         const successfulChapters = new Set();
-        // Track chapters that are still pending after retries
         const failedChapters = [];
-
-        // Define maximum retry attempts per chapter
         const MAX_RETRIES = 3;
-        // Delay between retries (in milliseconds)
         const RETRY_DELAY = 2000;
 
         try {
-            // First pass: try to process all chapters
             for (const [index, chapter] of chapters.entries()) {
-                if (index >= 15) break; // Limit to 15 chapters
-
-                if (successfulChapters.has(index)) continue; // Skip already processed chapters
+                if (index >= 15) break;
+                if (successfulChapters.has(index)) continue;
 
                 console.log(
                     `Processing chapter ${index + 1}/${Math.min(
@@ -388,7 +320,6 @@ function CourseLayout({ params }) {
                     )}: ${chapter.chapterName}`
                 );
 
-                // Try to process this chapter with retries
                 let retryCount = 0;
                 let success = false;
 
@@ -397,22 +328,13 @@ function CourseLayout({ params }) {
                         console.log(
                             `Retry #${retryCount} for chapter ${chapter.chapterName}`
                         );
-                        // Add delay between retries
                         await new Promise((resolve) =>
                             setTimeout(resolve, RETRY_DELAY)
                         );
                     }
 
                     try {
-                        // First, get AI-generated content for this chapter
-                        const PROMPT =
-                            "Explain the concept in Detail on Topic: " +
-                            course?.name +
-                            ", Chapter: " +
-                            chapter?.chapterName +
-                            ", in JSON Format with a list of arrays with fields as title, explanation on given chapter in detail, Code Example (Code field in <precode> format) if applicable in Uzbek. Ensure all special characters (e.g., newlines, backslashes, quotes) in code examples are properly escaped for valid JSON.";
-
-                        // Get AI-generated content first so we can use it for better video search
+                        const PROMPT = `Explain the concept in Detail on Topic: ${course?.name}, Chapter: ${chapter?.chapterName}, in JSON Format with a list of arrays with fields as title, explanation on given chapter in detail, Code Example (Code field in <precode> format) if applicable in Uzbek. Ensure all special characters (e.g., newlines, backslashes, quotes) in code examples are properly escaped for valid JSON.`;
                         const result =
                             await GenerateChapterContent_AI.sendMessage(PROMPT);
                         const rawText = result.response?.text();
@@ -423,13 +345,13 @@ function CourseLayout({ params }) {
                             );
                         }
 
-                        // Parse the JSON content
                         let contentObject;
                         try {
-                            // Try direct parsing first
                             contentObject = JSON.parse(rawText);
                         } catch (jsonError) {
-                            // If direct parsing fails, try to extract JSON
+                            console.log(
+                                "Direct parsing failed, trying to extract JSON"
+                            );
                             const jsonMatch = rawText.match(/\{[\s\S]*\}/);
                             if (jsonMatch) {
                                 try {
@@ -458,14 +380,12 @@ function CourseLayout({ params }) {
                                 .join(" ");
                         }
 
-                        // Get video ID using the enhanced search with content-based keywords
                         const videoId = await findVideoForChapter(
                             course.name,
                             chapter.chapterName,
                             additionalKeywords
                         );
 
-                        // Save chapter content to database
                         await db.insert(Chapters).values({
                             chapterId: index,
                             courseId: course?.courseId,
@@ -477,7 +397,6 @@ function CourseLayout({ params }) {
                             `Successfully processed chapter ${chapter.chapterName}`
                         );
 
-                        // Mark this chapter as successfully processed
                         successfulChapters.add(index);
                         success = true;
                     } catch (err) {
@@ -488,8 +407,6 @@ function CourseLayout({ params }) {
                             err
                         );
                         retryCount++;
-
-                        // If we've reached max retries, add to failed chapters list
                         if (retryCount >= MAX_RETRIES) {
                             failedChapters.push({
                                 index,
@@ -511,12 +428,8 @@ function CourseLayout({ params }) {
                         .map((ch) => ch.chapterName)
                         .join(", ")}`
                 );
-
-                // Optionally, you can implement a more aggressive retry for persistently failing chapters
-                // This could include using a different prompt format or other strategies
             }
 
-            // Check if we've processed all required chapters
             const totalProcessed = successfulChapters.size;
             const totalToProcess = Math.min(chapters.length, 15);
 
@@ -525,22 +438,16 @@ function CourseLayout({ params }) {
                     `All ${totalProcessed} chapters successfully processed!`
                 );
 
-                // Mark course as published only when all chapters are successfully processed
                 await db
                     .update(CourseList)
                     .set({ publish: true })
                     .where(eq(CourseList.courseId, course?.courseId));
-
-                router.replace(
-                    "/create-course/" + course?.courseId + "/finish"
-                );
+                router.replace(`/create-course/${course?.courseId}/finish`);
             } else {
                 console.log(
                     `Processed ${totalProcessed}/${totalToProcess} chapters.`
                 );
-                // You might want to ask the user if they want to publish anyway or try again later
 
-                // Show an alert or message to the user
                 alert(
                     `${totalProcessed} out of ${totalToProcess} chapters were successfully processed. ${failedChapters.length} chapters failed after multiple attempts.`
                 );
@@ -553,19 +460,149 @@ function CourseLayout({ params }) {
     };
 
     return (
-        <div className="mt-10 px-7 md:px-20 lg:px-44">
-            <h2 className="font-bold text-center text-2xl">Course Layout</h2>
+        <section
+            ref={ref}
+            className="relative min-h-screen overflow-hidden bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 px-4 py-10 text-white"
+        >
+            <div className="absolute inset-0 z-0 opacity-10">
+                <div className="h-full w-full bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px]">
+                    <motion.div
+                        initial={{ opacity: 0.3 }}
+                        animate={{
+                            opacity: [0.3, 0.4, 0.3],
+                            scale: [1, 1.02, 1],
+                        }}
+                        transition={{
+                            duration: 8,
+                            repeat: Infinity,
+                            repeatType: "reverse",
+                        }}
+                    />
+                </div>
+            </div>
+            <div className="absolute inset-0 z-0">
+                {Array.from({ length: 15 }).map((_, i) => (
+                    <motion.div
+                        key={i}
+                        className="absolute rounded-full bg-blue-500/20"
+                        style={{
+                            width: Math.random() * 4 + 1,
+                            height: Math.random() * 4 + 1,
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                        }}
+                        animate={{
+                            y: [0, -30, 0],
+                            x: [0, Math.random() * 20 - 10, 0],
+                            opacity: [0, 0.5, 0],
+                        }}
+                        transition={{
+                            duration: Math.random() * 20 + 10,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                        }}
+                    />
+                ))}
+            </div>
 
-            <LoadingDialog isLoading={isLoading} />
+            <div className="relative z-10 mx-auto max-w-screen-xl">
+                <motion.h2
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    variants={{
+                        visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.6 },
+                        },
+                    }}
+                    className="text-center text-4xl font-extrabold tracking-tight text-blue-300 sm:text-5xl"
+                >
+                    Course Layout
+                </motion.h2>
 
-            <CourseBasicInfo course={course} refreshData={getCourse} />
-            <CourseDetail course={course} />
-            <ChapterList course={course} refreshData={getCourse} />
+                <LoadingDialog isLoading={isLoading} />
 
-            <Button className="my-10" onClick={GenerateChapterContent}>
-                Generate Course Content
-            </Button>
-        </div>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    variants={{
+                        visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.6, delay: 0.2 },
+                        },
+                    }}
+                >
+                    <CourseBasicInfo course={course} refreshData={getCourse} />
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    variants={{
+                        visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.6, delay: 0.4 },
+                        },
+                    }}
+                >
+                    <CourseDetail course={course} />
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    variants={{
+                        visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.6, delay: 0.6 },
+                        },
+                    }}
+                >
+                    <ChapterList course={course} refreshData={getCourse} />
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    variants={{
+                        visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.6, delay: 0.8 },
+                        },
+                    }}
+                    className="flex justify-center my-10"
+                >
+                    <motion.button
+                        whileHover={{
+                            scale: 1.05,
+                            boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)",
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={GenerateChapterContent}
+                        className="group relative inline-flex items-center rounded-lg bg-blue-600 px-6 py-3 font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-500"
+                    >
+                        <Sparkles className="mr-2 h-5 w-5 transition-transform group-hover:rotate-12" />
+                        Generate Course Content
+                        <motion.span
+                            animate={{
+                                boxShadow: [
+                                    "0 0 0px rgba(59, 130, 246, 0)",
+                                    "0 0 8px rgba(59, 130, 246, 0.5)",
+                                    "0 0 0px rgba(59, 130, 246, 0)",
+                                ],
+                            }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="absolute inset-0 rounded-lg"
+                        />
+                    </motion.button>
+                </motion.div>
+            </div>
+        </section>
     );
 }
 

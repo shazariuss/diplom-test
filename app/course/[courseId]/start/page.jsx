@@ -5,25 +5,24 @@ import { and, eq } from "drizzle-orm";
 import React, { useEffect, useState } from "react";
 import ChapterListCard from "./_components/ChapterListCard";
 import ChapterContent from "./_components/ChapterContent";
-import Header from "@/app/_components/Header";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 const CourseStart = ({ params }) => {
-    const [course, setCourse] = useState();
-    const [selectedChapter, setSelectedChapter] = useState();
-    const [chapterContent, setChapterContent] = useState();
+    const [course, setCourse] = useState(null);
+    const [selectedChapter, setSelectedChapter] = useState(null);
+    const [chapterContent, setChapterContent] = useState(null);
 
     useEffect(() => {
         GetCourse();
-    }, []);
+    }, [params?.courseId]);
 
     const GetCourse = async () => {
         const result = await db
             .select()
             .from(CourseList)
             .where(eq(CourseList?.courseId, params?.courseId));
-
         const fetchedCourse = result[0];
         setCourse(fetchedCourse);
         if (fetchedCourse?.courseOutput?.course?.chapters?.length > 0) {
@@ -45,27 +44,39 @@ const CourseStart = ({ params }) => {
                     eq(Chapters.courseId, courseData?.courseId)
                 )
             );
-
         setChapterContent(result[0]);
     };
 
     return (
-        <>
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white"
+        >
             <div className="flex">
-                <div className="fixed top-0 overflow-auto z-10 md:w-72 hidden md:block h-screen border-r shadow-sm">
-                    <h2 className="font-bold text-lg bg-primary p-4 text-white">
+                {/* Sidebar */}
+                <motion.div
+                    initial={{ x: -100, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.7, delay: 0.2 }}
+                    className="fixed top-0 z-10 hidden h-screen w-72 border-r border-gray-700 bg-gray-800/50 shadow-lg backdrop-blur-sm md:block"
+                >
+                    <h2 className="bg-blue-900 p-4 text-lg font-bold text-blue-300">
                         {course?.courseOutput?.course?.courseName}
                     </h2>
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-900 scrollbar-track-gray-800">
                         {course?.courseOutput?.course?.chapters.map(
                             (chapter, index) => (
-                                <div
+                                <motion.div
                                     key={index}
-                                    className={`cursor-pointer hover:bg-purple-50 ${
+                                    whileHover={{ scale: 1.02 }}
+                                    transition={{ duration: 0.3 }}
+                                    className={`cursor-pointer border-b border-gray-700 transition-colors ${
                                         selectedChapter?.chapterName ===
                                         chapter?.chapterName
-                                            ? "bg-purple-100"
-                                            : ""
+                                            ? "bg-blue-900/30"
+                                            : "hover:bg-gray-700/50"
                                     }`}
                                     onClick={() => {
                                         setSelectedChapter(chapter);
@@ -76,26 +87,39 @@ const CourseStart = ({ params }) => {
                                         chapter={chapter}
                                         index={index}
                                     />
-                                </div>
+                                </motion.div>
                             )
                         )}
                     </div>
-                </div>
-                <div className="md:ml-72 flex-1">
-                    <div className="h-[80px] bg-slate-100 flex items-center justify-end pr-5">
+                </motion.div>
+
+                {/* Main Content */}
+                <div className="flex-1 md:ml-72">
+                    <motion.div
+                        initial={{ y: -20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.6, delay: 0.3 }}
+                        className="flex h-20 items-center justify-end bg-gray-800/50 pr-5 shadow-md backdrop-blur-sm"
+                    >
                         <Link href="/dashboard">
-                            <Button>Dashboard</Button>
+                            <Button className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-500 hover:shadow-blue-500/40">
+                                Dashboard
+                            </Button>
                         </Link>
-                    </div>
-                    <div>
+                    </motion.div>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.7, delay: 0.4 }}
+                    >
                         <ChapterContent
                             chapter={selectedChapter}
                             content={chapterContent}
                         />
-                    </div>
+                    </motion.div>
                 </div>
             </div>
-        </>
+        </motion.div>
     );
 };
 

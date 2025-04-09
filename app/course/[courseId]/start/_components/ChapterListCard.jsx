@@ -1,22 +1,33 @@
 import React from "react";
 import { HiOutlineClock } from "react-icons/hi2";
+import { motion } from "framer-motion";
 
 const ChapterListCard = ({ chapter, index }) => {
     return (
-        <div className="grid grid-cols-5 p-4 items-center border-b">
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.1 }}
+            className="grid grid-cols-5 items-center p-4"
+        >
             <div>
-                <h2 className="p-2 bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center">
+                <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-900 text-white"
+                >
                     {index + 1}
-                </h2>
+                </motion.div>
             </div>
             <div className="col-span-4">
-                <h2 className="font-medium">{chapter?.chapterName}</h2>
-                <h2 className="flex items-center gap-2 text-sm text-primary">
+                <h2 className="font-medium text-gray-200">
+                    {chapter?.chapterName}
+                </h2>
+                <h2 className="flex items-center gap-2 text-sm text-blue-400">
                     <HiOutlineClock />
                     {chapter?.duration}
                 </h2>
             </div>
-        </div>
+        </motion.div>
     );
 };
 

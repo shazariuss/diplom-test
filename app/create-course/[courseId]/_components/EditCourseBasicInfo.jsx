@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { HiOutlinePencilAlt } from "react-icons/hi";
+import { Edit2 } from "lucide-react";
 import {
     Dialog,
     DialogClose,
@@ -13,10 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { CourseList } from "@/configs/schema";
 import { db } from "@/configs/db";
 import { eq } from "drizzle-orm";
+import { motion } from "framer-motion";
 
 const EditCourseBasicInfo = ({ course, refreshData }) => {
     const [name, setName] = useState();
@@ -31,11 +31,9 @@ const EditCourseBasicInfo = ({ course, refreshData }) => {
         course.courseOutput.course.courseName = name;
         course.courseOutput.course.description = description;
 
-        const result = await db
+        await db
             .update(CourseList)
-            .set({
-                courseOutput: course?.courseOutput,
-            })
+            .set({ courseOutput: course?.courseOutput })
             .where(eq(CourseList?.id, course?.id))
             .returning({ id: CourseList.id });
 
@@ -45,26 +43,34 @@ const EditCourseBasicInfo = ({ course, refreshData }) => {
     return (
         <Dialog>
             <DialogTrigger>
-                <HiOutlinePencilAlt />
+                <motion.div
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                >
+                    <Edit2 className="h-4 w-4 text-blue-400" />
+                </motion.div>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="bg-gray-800 border-gray-700 text-white">
                 <DialogHeader>
                     <DialogTitle>Edit Course Title & Description</DialogTitle>
                     <DialogDescription>
                         <div className="mt-3">
-                            <label htmlFor="">Course Title</label>
+                            <label className="text-gray-300">
+                                Course Title
+                            </label>
                             <Input
                                 defaultValue={
                                     course?.courseOutput?.course?.courseName
                                 }
                                 onChange={(e) => setName(e.target.value)}
+                                className="bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500/50"
                             />
                         </div>
-                        <div>
-                            <label htmlFor="">Description</label>
+                        <div className="mt-3">
+                            <label className="text-gray-300">Description</label>
                             <Textarea
                                 onChange={(e) => setDescription(e.target.value)}
-                                className="h-40"
+                                className="h-40 bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500/50"
                                 defaultValue={
                                     course?.courseOutput?.course?.description
                                 }
@@ -74,7 +80,28 @@ const EditCourseBasicInfo = ({ course, refreshData }) => {
                 </DialogHeader>
                 <DialogFooter>
                     <DialogClose>
-                        <Button onClick={onUpdateHandler}>Update</Button>
+                        <motion.button
+                            whileHover={{
+                                scale: 1.05,
+                                boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)",
+                            }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={onUpdateHandler}
+                            className="group relative inline-flex items-center rounded-lg bg-blue-600 px-6 py-2 font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-500"
+                        >
+                            Update
+                            <motion.span
+                                animate={{
+                                    boxShadow: [
+                                        "0 0 0px rgba(59, 130, 246, 0)",
+                                        "0 0 8px rgba(59, 130, 246, 0.5)",
+                                        "0 0 0px rgba(59, 130, 246, 0)",
+                                    ],
+                                }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                                className="absolute inset-0 rounded-lg"
+                            />
+                        </motion.button>
                     </DialogClose>
                 </DialogFooter>
             </DialogContent>

@@ -1,7 +1,12 @@
 "use client";
-import { Button } from "@/components/ui/button";
-import React, { useContext, useEffect, useState } from "react";
-import { HiMiniSquares2X2 } from "react-icons/hi2";
+import React, { useContext, useEffect, useState, useRef } from "react";
+import { motion, useAnimation, useInView } from "framer-motion";
+import {
+    Sparkles,
+    ChevronLeft,
+    ChevronRight,
+    CheckCircle2,
+} from "lucide-react";
 import SelectCategory from "./_components/SelectCategory";
 import TopicDescription from "./_components/TopicDescription";
 import SelectOption from "./_components/SelectOption";
@@ -16,96 +21,75 @@ import { useRouter } from "next/navigation";
 
 function CreateCourse() {
     const StepperCourse = [
-        {
-            id: 1,
-            name: "Category",
-            icon: <HiMiniSquares2X2 />,
-        },
-        {
-            id: 2,
-            name: "Topic & Desc",
-            icon: <HiMiniSquares2X2 />,
-        },
-        {
-            id: 3,
-            name: "Options",
-            icon: <HiMiniSquares2X2 />,
-        },
+        { id: 1, name: "Category", icon: <Sparkles /> },
+        { id: 2, name: "Topic & Desc", icon: <Sparkles /> },
+        { id: 3, name: "Options", icon: <Sparkles /> },
     ];
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useUser();
     const router = useRouter();
-
     const { userCourseInput, setUserCourseInput } =
         useContext(UserInputContext);
+    const [activeIndex, setActiveIndex] = useState(0);
 
-    // useEffect(() => {
-    //     console.log(userCourseInput);
-    // }, [userCourseInput]);
+    const ref = useRef(null);
+    const isInView = useInView(ref, { once: true });
+    const controls = useAnimation();
+
+    useEffect(() => {
+        if (isInView) controls.start("visible");
+    }, [isInView, controls]);
+
+    // Determine if each step is completed based on userCourseInput
+    // First, let's fix the isStepCompleted function to ensure it properly evaluates each step
+    const isStepCompleted = (stepIndex) => {
+        if (!userCourseInput || Object.keys(userCourseInput).length === 0)
+            return false;
+        switch (stepIndex) {
+            case 0:
+                return (
+                    userCourseInput?.category &&
+                    userCourseInput.category.length > 0
+                );
+            case 1:
+                return (
+                    userCourseInput?.topic &&
+                    userCourseInput.topic.length > 0 &&
+                    userCourseInput?.description &&
+                    userCourseInput.description.length > 0
+                );
+            case 2:
+                return (
+                    userCourseInput?.level &&
+                    userCourseInput?.duration &&
+                    userCourseInput?.displayVideo !== undefined &&
+                    userCourseInput?.noOfChapter
+                );
+            default:
+                return false;
+        }
+    };
 
     const checkStatus = () => {
-        if (userCourseInput?.length == 0) {
-            return true;
-        }
-
-        if (
-            activeIndex == 0 &&
-            (userCourseInput?.category?.length == 0 ||
-                userCourseInput?.category == undefined)
-        ) {
-            return true;
-        }
-
-        if (
-            activeIndex == 1 &&
-            (userCourseInput?.topic?.length == 0 ||
-                userCourseInput?.topic == undefined)
-        ) {
-            return true;
-        }
-
-        if (
-            activeIndex == 2 &&
-            (userCourseInput?.level == undefined ||
-                userCourseInput?.duration == undefined ||
-                userCourseInput?.displayVideo == undefined ||
-                userCourseInput?.noOfChapter == undefined)
-        ) {
-            return true;
-        }
-        return false;
+        return !isStepCompleted(activeIndex);
     };
 
     const GenerateCourseLayout = async () => {
         setIsLoading(true);
         const BASIC_PROMPT =
             "Generate A Course Tutorial on Following Detail With field as Course Name, Description, Along with Chapter Name, about, Duration:";
-        const USER_INPUT_PROMPT =
-            "Category: " +
-            userCourseInput?.category +
-            ", Topic: " +
-            userCourseInput?.topic +
-            ", Level: " +
-            userCourseInput?.level +
-            ", Duration:" +
-            userCourseInput?.duration +
-            ", NoOf Chapters:" +
-            userCourseInput?.noOfChapter +
-            ", in JSON format" +
-            "in Uzbek Language.";
-        const FINAL_RPOMPT = BASIC_PROMPT + USER_INPUT_PROMPT;
-        console.log("Final prompt:", FINAL_RPOMPT);
-        const result = await GenerateCourseLayout_AI.sendMessage(FINAL_RPOMPT);
+        const USER_INPUT_PROMPT = `Category: ${userCourseInput?.category}, Topic: ${userCourseInput?.topic}, Level: ${userCourseInput?.level}, Duration: ${userCourseInput?.duration}, NoOf Chapters: ${userCourseInput?.noOfChapter}, in JSON format in Uzbek Language.`;
+        const FINAL_PROMPT = BASIC_PROMPT + USER_INPUT_PROMPT;
+        const result = await GenerateCourseLayout_AI.sendMessage(FINAL_PROMPT);
         setIsLoading(false);
-        // console.log(result.response?.text());
-        console.log("Result layout:", JSON.parse(result.response?.text()));
-        SaveCourseLayoutInDb(JSON.parse(result.response?.text()));
+        const courseLayout = JSON.parse(result.response?.text());
+        SaveCourseLayoutInDb(courseLayout);
     };
 
     const SaveCourseLayoutInDb = async (courseLayout) => {
-        var id = uuid4();
+        const id = uuid4();
         setIsLoading(true);
-        const result = await db.insert(CourseList).values({
+        await db.insert(CourseList).values({
             courseId: id,
             name: userCourseInput?.topic,
             level: userCourseInput?.level,
@@ -115,84 +99,230 @@ function CreateCourse() {
             userName: user?.fullName,
             userProfileImage: user?.imageUrl,
         });
-
-        // console.log("finish");
         setIsLoading(false);
         router.replace("/create-course/" + id);
     };
 
-    const [activeIndex, setActiveIndex] = useState(0);
     return (
-        <div>
-            <div className="flex flex-col justify-center items-center mt-10">
-                <h2 className="text-4xl text-primary font-medium">
-                    Create Course
-                </h2>
-                <div className="flex mt-10">
+        <section
+            ref={ref}
+            className="relative min-h-screen overflow-hidden bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 px-4 py-10 text-white"
+        >
+            {/* Animated Background Grid */}
+            <div className="absolute inset-0 z-0 opacity-10">
+                <div className="h-full w-full bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px]">
+                    <motion.div
+                        initial={{ opacity: 0.3 }}
+                        animate={{
+                            opacity: [0.3, 0.4, 0.3],
+                            scale: [1, 1.02, 1],
+                        }}
+                        transition={{
+                            duration: 8,
+                            repeat: Infinity,
+                            repeatType: "reverse",
+                        }}
+                    />
+                </div>
+            </div>
+            {/* Floating Particles */}
+            <div className="absolute inset-0 z-0">
+                {Array.from({ length: 15 }).map((_, i) => (
+                    <motion.div
+                        key={i}
+                        className="absolute rounded-full bg-blue-500/20"
+                        style={{
+                            width: Math.random() * 4 + 1,
+                            height: Math.random() * 4 + 1,
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                        }}
+                        animate={{
+                            y: [0, -30, 0],
+                            x: [0, Math.random() * 20 - 10, 0],
+                            opacity: [0, 0.5, 0],
+                        }}
+                        transition={{
+                            duration: Math.random() * 20 + 10,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                        }}
+                    />
+                ))}
+            </div>
+
+            <div className="relative z-10 mx-auto max-w-screen-xl">
+                <motion.h2
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    variants={{
+                        visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.6 },
+                        },
+                    }}
+                    className="text-center text-4xl font-extrabold tracking-tight text-blue-300 sm:text-5xl"
+                >
+                    Create Your Course
+                </motion.h2>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    variants={{
+                        visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.6, delay: 0.2 },
+                        },
+                    }}
+                    className="mt-10 flex justify-center"
+                >
                     {StepperCourse.map((item, index) => (
-                        <div className="flex items-center">
-                            <div className="flex flex-col items-center w-[50px] md:w-[100px]">
-                                <div
-                                    className={`bg-gray-200 p-3 rounded-full text-white ${
-                                        activeIndex >= index && "bg-purple-500"
-                                    }`}
-                                >
-                                    {item.icon}
+                        <div key={item.id} className="flex items-center">
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{
+                                    scale: activeIndex >= index ? 1 : 0.9,
+                                    opacity: 1,
+                                    backgroundColor: isStepCompleted(index)
+                                        ? "rgba(59, 130, 246, 0.8)" // Blue for completed
+                                        : activeIndex === index
+                                        ? "rgba(96, 165, 250, 0.5)" // Lighter blue for active
+                                        : "rgba(75, 85, 99, 0.5)", // Gray for inactive
+                                }}
+                                transition={{
+                                    duration: 0.5,
+                                    delay: 0.2 * index,
+                                }}
+                                className="flex flex-col items-center w-[60px] md:w-[100px]"
+                            >
+                                <div className="p-3 rounded-full text-white">
+                                    {isStepCompleted(index) ? (
+                                        <CheckCircle2 className="h-6 w-6" />
+                                    ) : (
+                                        item.icon
+                                    )}
                                 </div>
-                                <h2 className="hidden md:block md:text-sm">
+                                <span className="mt-2 text-sm font-medium text-gray-300 hidden md:block">
                                     {item.name}
-                                </h2>
-                            </div>
-                            {index != StepperCourse.length - 1 && (
-                                <div
-                                    className={`h-1 w-[50px] md:w-[100px] rounded-full lg:w-[170px] bg-gray-300 ${
-                                        activeIndex - 1 >= index &&
-                                        "bg-purple-500"
-                                    }`}
-                                ></div>
+                                </span>
+                            </motion.div>
+                            {index < StepperCourse.length - 1 && (
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{
+                                        width: "100%",
+                                        backgroundColor: isStepCompleted(index)
+                                            ? "rgba(59, 130, 246, 0.6)" // Blue for completed
+                                            : "rgba(75, 85, 99, 0.5)", // Gray for incomplete
+                                        transition: {
+                                            duration: 0.5,
+                                            delay: 0.2 * index,
+                                        },
+                                    }}
+                                    className="h-1 w-[50px] md:w-[100px] lg:w-[170px] rounded-full"
+                                />
                             )}
                         </div>
                     ))}
-                </div>
-            </div>
+                </motion.div>
 
-            <div className="px-10 md:px-20 lg:px-44 mt-10">
-                {activeIndex == 0 && <SelectCategory />}
-                {activeIndex == 1 && <TopicDescription />}
-                {activeIndex == 2 && <SelectOption />}
-                <div className="flex justify-between mt-10">
-                    <Button
-                        variant="outline"
-                        disabled={activeIndex == 0}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    variants={{
+                        visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.6, delay: 0.4 },
+                        },
+                    }}
+                    className="mt-10 px-4 md:px-10 lg:px-20"
+                >
+                    {activeIndex === 0 && <SelectCategory />}
+                    {activeIndex === 1 && <TopicDescription />}
+                    {activeIndex === 2 && <SelectOption />}
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    variants={{
+                        visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.6, delay: 0.6 },
+                        },
+                    }}
+                    className="mt-10 flex justify-between px-4 md:px-10 lg:px-20"
+                >
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        disabled={activeIndex === 0}
                         onClick={() => setActiveIndex((prev) => prev - 1)}
+                        className="group inline-flex items-center rounded-lg border border-gray-600 bg-gray-800/50 px-6 py-3 font-medium text-gray-200 shadow-sm transition-all hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Previous{" "}
-                    </Button>
-                    {activeIndex < 2 && (
-                        <Button
+                        <ChevronLeft className="mr-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
+                        Previous
+                    </motion.button>
+                    {activeIndex < 2 ? (
+                        <motion.button
+                            whileHover={{
+                                scale: 1.05,
+                                boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)",
+                            }}
+                            whileTap={{ scale: 0.95 }}
                             disabled={checkStatus()}
-                            onClick={() =>
-                                setActiveIndex((prev) =>
-                                    prev < 2 ? prev + 1 : prev
-                                )
-                            }
+                            onClick={() => setActiveIndex((prev) => prev + 1)}
+                            className="group relative inline-flex items-center rounded-lg bg-blue-600 px-6 py-3 font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Next
-                        </Button>
-                    )}
-
-                    {activeIndex == 2 && (
-                        <Button
+                            <ChevronRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                            <motion.span
+                                animate={{
+                                    boxShadow: [
+                                        "0 0 0px rgba(59, 130, 246, 0)",
+                                        "0 0 8px rgba(59, 130, 246, 0.5)",
+                                        "0 0 0px rgba(59, 130, 246, 0)",
+                                    ],
+                                }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                                className="absolute inset-0 rounded-lg"
+                            />
+                        </motion.button>
+                    ) : (
+                        <motion.button
+                            whileHover={{
+                                scale: 1.05,
+                                boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)",
+                            }}
+                            whileTap={{ scale: 0.95 }}
                             disabled={checkStatus()}
-                            onClick={() => GenerateCourseLayout()}
+                            onClick={GenerateCourseLayout}
+                            className="group relative inline-flex items-center rounded-lg bg-blue-600 px-6 py-3 font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Generate Course Layout
-                        </Button>
+                            <Sparkles className="mr-2 h-5 w-5 transition-transform group-hover:rotate-12" />
+                            Generate Course
+                            <motion.span
+                                animate={{
+                                    boxShadow: [
+                                        "0 0 0px rgba(59, 130, 246, 0)",
+                                        "0 0 8px rgba(59, 130, 246, 0.5)",
+                                        "0 0 0px rgba(59, 130, 246, 0)",
+                                    ],
+                                }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                                className="absolute inset-0 rounded-lg"
+                            />
+                        </motion.button>
                     )}
-                </div>
+                </motion.div>
             </div>
             <LoadingDialog isLoading={isLoading} />
-        </div>
+        </section>
     );
 }
 

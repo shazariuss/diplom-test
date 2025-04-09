@@ -8,99 +8,88 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { UserInputContext } from "@/app/_context/UserInputContext";
+import { motion } from "framer-motion";
 
-const SelectOption = () => {
+function SelectOption() {
     const { userCourseInput, setUserCourseInput } =
         useContext(UserInputContext);
 
     const handleInputChange = (fieldName, value) => {
-        setUserCourseInput((prev) => ({
-            ...prev,
-            [fieldName]: value,
-        }));
+        setUserCourseInput((prev) => ({ ...prev, [fieldName]: value }));
     };
 
     return (
-        <div className="px-10 md:px-20 lg:px-44">
-            <div className="grid grid-cols-2 gap-10">
-                <div>
-                    <label htmlFor="" className="text-sm">
-                        Difficulty Level
-                    </label>
-                    <Select
-                        onValueChange={(value) =>
-                            handleInputChange("level", value)
-                        }
-                        defaultValue={userCourseInput?.level}
+        <div className="px-4 md:px-10 lg:px-20">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[
+                    {
+                        label: "Difficulty Level",
+                        field: "level",
+                        options: ["Beginner", "Intermediate", "Advanced"],
+                    },
+                    {
+                        label: "Course Duration",
+                        field: "duration",
+                        options: ["1 Hour", "2 Hours", "More than 3 hours"],
+                    },
+                    {
+                        label: "Add Video",
+                        field: "displayVideo",
+                        options: ["Yes", "No"],
+                    },
+                ].map((item, index) => (
+                    <motion.div
+                        key={item.field}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: index * 0.1 }}
                     >
-                        <SelectTrigger className="">
-                            <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Beginner">Beginner</SelectItem>
-                            <SelectItem value="Intermediate">
-                                Intermediate
-                            </SelectItem>
-                            <SelectItem value="Adcance">Adcanced</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div>
-                    <label htmlFor="" className="text-sm">
-                        Course Duration
-                    </label>
-                    <Select
-                        onValueChange={(value) =>
-                            handleInputChange("duration", value)
-                        }
-                        defaultValue={userCourseInput?.duration}
-                    >
-                        <SelectTrigger className="">
-                            <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="1 Hours">1 Hours</SelectItem>
-                            <SelectItem value="2 Hours">2 Hours</SelectItem>
-                            <SelectItem value="More than 3 hours">
-                                More than 3 hours
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div>
-                    <label htmlFor="" className="text-sm">
-                        Add Video
-                    </label>
-                    <Select
-                        onValueChange={(value) =>
-                            handleInputChange("displayVideo", value)
-                        }
-                        defaultValue={userCourseInput?.displayVideo}
-                    >
-                        <SelectTrigger className="">
-                            <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Yes">Yes</SelectItem>
-                            <SelectItem value="No">No</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div>
-                    <label htmlFor="" className="text-sm">
-                        Numbers of chapter
+                        <label className="text-sm font-medium text-gray-300">
+                            {item.label}
+                        </label>
+                        <Select
+                            onValueChange={(value) =>
+                                handleInputChange(item.field, value)
+                            }
+                            defaultValue={userCourseInput?.[item.field]}
+                        >
+                            <SelectTrigger className="mt-2 bg-gray-800 border-gray-700 text-white focus:border-blue-500 focus:ring-blue-500/50">
+                                <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                                {item.options.map((option) => (
+                                    <SelectItem
+                                        key={option}
+                                        value={option}
+                                        className="hover:bg-blue-900/50"
+                                    >
+                                        {option}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </motion.div>
+                ))}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                    <label className="text-sm font-medium text-gray-300">
+                        Number of Chapters
                     </label>
                     <Input
                         type="number"
-                        onChange={(event) =>
-                            handleInputChange("noOfChapter", event.target.value)
-                        }
+                        className="mt-2 bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500/50"
                         defaultValue={userCourseInput?.noOfChapter}
+                        onChange={(e) =>
+                            handleInputChange("noOfChapter", e.target.value)
+                        }
                     />
-                </div>
+                </motion.div>
             </div>
         </div>
     );
-};
+}
 
 export default SelectOption;

@@ -1,53 +1,62 @@
+"use client";
+
 import React from "react";
-import {
-    HiOutlineChartBar,
-    HiOutlineClock,
-    HiOutlineBookOpen,
-    HiOutlinePlay,
-} from "react-icons/hi";
+import { BarChart, Clock, BookOpen, Play } from "lucide-react";
+import { motion } from "framer-motion";
 
 const CourseDetail = ({ course }) => {
+    const details = [
+        {
+            icon: <BarChart className="text-4xl text-blue-400" />,
+            label: "Skill Level",
+            value: course?.level,
+        },
+        {
+            icon: <Clock className="text-4xl text-blue-400" />,
+            label: "Duration",
+            value: course?.courseOutput?.course?.duration,
+        },
+        {
+            icon: <BookOpen className="text-4xl text-blue-400" />,
+            label: "No Of Chapters",
+            value: course?.courseOutput?.course?.noOfChapters,
+        },
+        {
+            icon: <Play className="text-4xl text-blue-400" />,
+            label: "Video Included?",
+            value: course?.includeVideo,
+        },
+    ];
+
     return (
-        <div className="border p-6 rounded-xl shadow-sm mt-3">
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="border border-gray-700 p-6 rounded-xl bg-gray-800/50 shadow-lg shadow-blue-500/10 mt-3"
+        >
             <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                <div className="flex gap-2">
-                    <HiOutlineChartBar className="text-4xl text-primary" />
-                    <div>
-                        <h2 className="text-xs text-gray-500">Skill Level</h2>
-                        <h2 className="font-medium text-lg">{course?.level}</h2>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <HiOutlineClock className="text-4xl text-primary" />
-                    <div>
-                        <h2 className="text-xs text-gray-500">Duration</h2>
-                        <h2 className="font-medium text-lg">
-                            {course?.courseOutput?.course?.duration}
-                        </h2>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <HiOutlineBookOpen className="text-4xl text-primary" />
-                    <div>
-                        <h2 className="text-xs text-gray-500">No Of Chapter</h2>
-                        <h2 className="font-medium text-lg">
-                            {course?.courseOutput?.course?.noOfChapters}
-                        </h2>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <HiOutlinePlay className="text-4xl text-primary" />
-                    <div>
-                        <h2 className="text-xs text-gray-500">
-                            Video included?
-                        </h2>
-                        <h2 className="font-medium text-lg">
-                            {course?.includeVideo}
-                        </h2>
-                    </div>
-                </div>
+                {details.map((detail, index) => (
+                    <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                        className="flex gap-3 items-center"
+                    >
+                        {detail.icon}
+                        <div>
+                            <h2 className="text-xs text-gray-400">
+                                {detail.label}
+                            </h2>
+                            <h2 className="font-medium text-lg text-white">
+                                {detail.value}
+                            </h2>
+                        </div>
+                    </motion.div>
+                ))}
             </div>
-        </div>
+        </motion.div>
     );
 };
 
