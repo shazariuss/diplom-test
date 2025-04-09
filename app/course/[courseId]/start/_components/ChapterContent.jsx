@@ -4,7 +4,6 @@ import YouTube from "react-youtube";
 import { motion } from "framer-motion";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"; // Dark theme style
-import { CopyToClipboard } from "react-copy-to-clipboard";
 import { HiOutlineClipboardCopy } from "react-icons/hi";
 
 const ChapterContent = ({ chapter, content }) => {
@@ -72,7 +71,7 @@ const ChapterContent = ({ chapter, content }) => {
                                 className="relative mt-3 rounded-md bg-gray-900 shadow-inner"
                             >
                                 {/* Copy Button */}
-                                <CopyToClipboard
+                                {/* <CopyToClipboard
                                     text={item.code_example}
                                     onCopy={handleCopy}
                                 >
@@ -80,7 +79,7 @@ const ChapterContent = ({ chapter, content }) => {
                                         <HiOutlineClipboardCopy className="mr-1 h-4 w-4" />
                                         {copied ? "Copied!" : "Copy"}
                                     </button>
-                                </CopyToClipboard>
+                                </CopyToClipboard> */}
 
                                 {/* Syntax Highlighted Code */}
                                 <SyntaxHighlighter
