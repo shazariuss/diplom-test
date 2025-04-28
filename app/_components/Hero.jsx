@@ -21,7 +21,7 @@ const Hero = () => {
     return (
         <section
             ref={ref}
-            className="relative overflow-hidden bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white"
+            className="relative overflow-hidden bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white h-screen"
         >
             {/* Animated Background Grid */}
             <div className="absolute inset-0 z-0">
@@ -113,12 +113,12 @@ const Hero = () => {
                                 </svg>
                             </Link>
 
-                            <Link
+                            {/* <Link
                                 href="/how-it-works"
                                 className="inline-flex items-center rounded-lg border border-gray-600 bg-gray-800/50 px-6 py-3.5 text-base font-medium text-gray-200 shadow-sm backdrop-blur-sm transition-all hover:bg-gray-700/50 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500/50"
                             >
                                 How It Works
-                            </Link>
+                            </Link> */}
                         </motion.div>
 
                         {/* Features List */}

@@ -54,7 +54,7 @@ const FinishScreen = ({ params }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="px-10 md:px-20 lg:px-44 my-7 flex flex-col gap-5 min-h-screen bg-gray-900 text-gray-200"
+            className="px-10 md:px-20 lg:px-44  flex flex-col gap-5 min-h-screen bg-gray-900 text-gray-200"
         >
             {/* Congratulations Header */}
             <motion.h2
@@ -98,7 +98,7 @@ const FinishScreen = ({ params }) => {
                 transition={{ duration: 0.5, delay: 0.5 }}
                 className="flex justify-center items-center gap-3 mt-5"
             >
-                <div className="text-center text-gray-400 border border-gray-700 p-3 rounded-lg bg-gray-800/50 shadow-inner flex items-center gap-3">
+                {/* <div className="text-center text-gray-400 border border-gray-700 p-3 rounded-lg bg-gray-800/50 shadow-inner flex items-center gap-3">
                     <span className="truncate max-w-xs">
                         {process.env.NEXT_PUBLIC_HOST_NAME}/course/
                         {course?.courseId}
@@ -112,7 +112,7 @@ const FinishScreen = ({ params }) => {
                         <HiOutlineClipboardDocument className="h-5 w-5 mr-1" />
                         {copied ? "Copied!" : "Copy"}
                     </motion.button>
-                </div>
+                </div> */}
             </motion.div>
         </motion.div>
     );

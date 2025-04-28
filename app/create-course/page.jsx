@@ -1,5 +1,5 @@
 "use client";
-import React, { useContext, useEffect, useState, useRef } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { motion, useAnimation, useInView } from "framer-motion";
 import {
     Sparkles,
@@ -41,7 +41,6 @@ function CreateCourse() {
     }, [isInView, controls]);
 
     // Determine if each step is completed based on userCourseInput
-    // First, let's fix the isStepCompleted function to ensure it properly evaluates each step
     const isStepCompleted = (stepIndex) => {
         if (!userCourseInput || Object.keys(userCourseInput).length === 0)
             return false;
@@ -119,7 +118,7 @@ function CreateCourse() {
                         }}
                         transition={{
                             duration: 8,
-                            repeat: Infinity,
+                            repeat: Number.POSITIVE_INFINITY,
                             repeatType: "reverse",
                         }}
                     />
@@ -144,7 +143,7 @@ function CreateCourse() {
                         }}
                         transition={{
                             duration: Math.random() * 20 + 10,
-                            repeat: Infinity,
+                            repeat: Number.POSITIVE_INFINITY,
                             ease: "easeInOut",
                         }}
                     />
@@ -167,6 +166,7 @@ function CreateCourse() {
                     Create Your Course
                 </motion.h2>
 
+                {/* Enhanced Stepper Component */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={controls}
@@ -186,44 +186,124 @@ function CreateCourse() {
                                 animate={{
                                     scale: activeIndex >= index ? 1 : 0.9,
                                     opacity: 1,
-                                    backgroundColor: isStepCompleted(index)
-                                        ? "rgba(59, 130, 246, 0.8)" // Blue for completed
-                                        : activeIndex === index
-                                        ? "rgba(96, 165, 250, 0.5)" // Lighter blue for active
-                                        : "rgba(75, 85, 99, 0.5)", // Gray for inactive
                                 }}
                                 transition={{
                                     duration: 0.5,
                                     delay: 0.2 * index,
                                 }}
-                                className="flex flex-col items-center w-[60px] md:w-[100px]"
+                                className={`relative flex h-16 w-16 flex-col items-center justify-center rounded-lg ${
+                                    isStepCompleted(index)
+                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                                        : activeIndex === index
+                                        ? "bg-blue-500/40 text-white shadow-md shadow-blue-400/20"
+                                        : "bg-gray-800/80 text-gray-400"
+                                } transition-all duration-300`}
                             >
-                                <div className="p-3 rounded-full text-white">
+                                {/* Glow effect for active/completed steps */}
+                                {(isStepCompleted(index) ||
+                                    activeIndex === index) && (
+                                    <motion.div
+                                        className="absolute inset-0 rounded-lg"
+                                        animate={{
+                                            boxShadow: [
+                                                "0 0 0px rgba(59, 130, 246, 0)",
+                                                "0 0 8px rgba(59, 130, 246, 0.5)",
+                                                "0 0 0px rgba(59, 130, 246, 0)",
+                                            ],
+                                        }}
+                                        transition={{
+                                            duration: 2,
+                                            repeat: Number.POSITIVE_INFINITY,
+                                        }}
+                                    />
+                                )}
+
+                                <div className="flex h-full w-full items-center justify-center">
                                     {isStepCompleted(index) ? (
                                         <CheckCircle2 className="h-6 w-6" />
                                     ) : (
-                                        item.icon
+                                        <motion.div
+                                            animate={
+                                                activeIndex === index
+                                                    ? {
+                                                          rotate: [
+                                                              0, 5, 0, -5, 0,
+                                                          ],
+                                                          scale: [1, 1.1, 1],
+                                                      }
+                                                    : {}
+                                            }
+                                            transition={{
+                                                duration: 2,
+                                                repeat: Number.POSITIVE_INFINITY,
+                                                repeatType: "reverse",
+                                            }}
+                                        >
+                                            {item.icon}
+                                        </motion.div>
                                     )}
                                 </div>
-                                <span className="mt-2 text-sm font-medium text-gray-300 hidden md:block">
+                                <span className="absolute -bottom-6 whitespace-nowrap text-sm font-medium text-blue-100">
                                     {item.name}
                                 </span>
                             </motion.div>
+
                             {index < StepperCourse.length - 1 && (
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{
-                                        width: "100%",
-                                        backgroundColor: isStepCompleted(index)
-                                            ? "rgba(59, 130, 246, 0.6)" // Blue for completed
-                                            : "rgba(75, 85, 99, 0.5)", // Gray for incomplete
-                                        transition: {
+                                <div className="relative h-1 w-[50px] md:w-[100px] lg:w-[170px]">
+                                    {/* Background line (always visible) */}
+                                    <motion.div className="absolute h-1 w-full rounded-full bg-gray-700/70" />
+
+                                    {/* Progress line (fills based on completion) */}
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{
+                                            width: isStepCompleted(index)
+                                                ? "100%"
+                                                : "0%",
+                                        }}
+                                        transition={{
                                             duration: 0.5,
                                             delay: 0.2 * index,
-                                        },
-                                    }}
-                                    className="h-1 w-[50px] md:w-[100px] lg:w-[170px] rounded-full"
-                                />
+                                        }}
+                                        className="absolute h-1 rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
+                                        style={{
+                                            boxShadow:
+                                                "0 0 8px rgba(59, 130, 246, 0.5)",
+                                        }}
+                                    />
+
+                                    {/* Animated particles along the line */}
+                                    {isStepCompleted(index) && (
+                                        <>
+                                            <motion.div
+                                                className="absolute top-0 h-1 w-3 rounded-full bg-blue-300"
+                                                animate={{
+                                                    x: ["0%", "100%"],
+                                                    opacity: [0, 1, 0],
+                                                }}
+                                                transition={{
+                                                    duration: 2,
+                                                    repeat: Number.POSITIVE_INFINITY,
+                                                    ease: "easeInOut",
+                                                    delay: Math.random(),
+                                                }}
+                                            />
+                                            <motion.div
+                                                className="absolute top-0 h-1 w-5 rounded-full bg-blue-200"
+                                                animate={{
+                                                    x: ["0%", "100%"],
+                                                    opacity: [0, 1, 0],
+                                                }}
+                                                transition={{
+                                                    duration: 2.5,
+                                                    repeat: Number.POSITIVE_INFINITY,
+                                                    ease: "easeInOut",
+                                                    delay: Math.random(),
+                                                }}
+                                            />
+                                        </>
+                                    )}
+                                </div>
                             )}
                         </div>
                     ))}
@@ -239,7 +319,7 @@ function CreateCourse() {
                             transition: { duration: 0.6, delay: 0.4 },
                         },
                     }}
-                    className="mt-10 px-4 md:px-10 lg:px-20"
+                    className="mt-16 px-4 md:px-10 lg:px-20"
                 >
                     {activeIndex === 0 && <SelectCategory />}
                     {activeIndex === 1 && <TopicDescription />}
@@ -289,7 +369,10 @@ function CreateCourse() {
                                         "0 0 0px rgba(59, 130, 246, 0)",
                                     ],
                                 }}
-                                transition={{ duration: 2, repeat: Infinity }}
+                                transition={{
+                                    duration: 2,
+                                    repeat: Number.POSITIVE_INFINITY,
+                                }}
                                 className="absolute inset-0 rounded-lg"
                             />
                         </motion.button>
@@ -314,7 +397,10 @@ function CreateCourse() {
                                         "0 0 0px rgba(59, 130, 246, 0)",
                                     ],
                                 }}
-                                transition={{ duration: 2, repeat: Infinity }}
+                                transition={{
+                                    duration: 2,
+                                    repeat: Number.POSITIVE_INFINITY,
+                                }}
                                 className="absolute inset-0 rounded-lg"
                             />
                         </motion.button>

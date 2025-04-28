@@ -16,12 +16,12 @@ const Sidebar = ({ onClose }) => {
             icon: <HiOutlineHome />,
             path: "/dashboard",
         },
-        {
-            id: 2,
-            name: "Explore",
-            icon: <HiOutlineSquare3Stack3D />,
-            path: "/dashboard/explore",
-        },
+        // {
+        // //     id: 2,
+        // //     name: "Explore",
+        // //     icon: <HiOutlineSquare3Stack3D />,
+        // //     path: "/dashboard/explore",
+        // // },
         // {
         //     id: 3,
         //     name: "Upgrade",
