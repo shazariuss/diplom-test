@@ -95,7 +95,7 @@ const FinishScreen = ({ params }) => {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
                 className="flex justify-center items-center gap-3 mt-5"
             >
                 {/* <div className="text-center text-gray-400 border border-gray-700 p-3 rounded-lg bg-gray-800/50 shadow-inner flex items-center gap-3">
