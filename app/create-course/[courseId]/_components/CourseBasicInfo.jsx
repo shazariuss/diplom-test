@@ -95,7 +95,7 @@ const CourseBasicInfo = ({ course, refreshData, edit = true }) => {
                     <label htmlFor="upload-image">
                         <Image
                             alt="Course Banner"
-                            src={selectedFile || "/placeholder.png"}
+                            src={selectedFile || "/placeholder.jpg"}
                             width={300}
                             height={300}
                             className="w-full h-[300px] object-cover rounded-xl cursor-pointer border border-gray-600"
